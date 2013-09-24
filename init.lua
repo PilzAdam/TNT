@@ -1,7 +1,13 @@
 local destroy = function(pos)
 	local nodename = minetest.env:get_node(pos).name
 	if nodename ~= "air" then
-		minetest.env:remove_node(pos)
+		local on_blast = minetest.registered_nodes[nodename].on_blast
+		if on_blast ~= nil then
+			on_blast(pos, 1) -- the intensity of TNT is defined to be 1
+			return
+		else
+			minetest.env:remove_node(pos)
+		end
 		nodeupdate(pos)
 		if minetest.registered_nodes[nodename].groups.flammable ~= nil then
 			minetest.env:set_node(pos, {name="fire:basic_flame"})
@@ -68,10 +74,7 @@ boom = function(pos, time)
 					pos.z = pos.z+dz
 					
 					local node =  minetest.env:get_node(pos)
-					if node.name == "tnt:tnt" or node.name == "tnt:tnt_burning" then
-						minetest.env:set_node(pos, {name="tnt:tnt_burning"})
-						boom({x=pos.x, y=pos.y, z=pos.z}, 0)
-					elseif node.name == "fire:basic_flame" or string.find(node.name, "default:water_") or string.find(node.name, "default:lava_") or node.name == "tnt:boom" then
+					if node.name == "fire:basic_flame" or string.find(node.name, "default:water_") or string.find(node.name, "default:lava_") or node.name == "tnt:boom" then
 						
 					else
 						if math.abs(dx)<2 and math.abs(dy)<2 and math.abs(dz)<2 then
@@ -122,6 +125,11 @@ minetest.register_node("tnt:tnt", {
 			boom(pos, 4)
 		end
 	end,
+
+	on_blast = function(pos, intensity)
+		minetest.env:set_node(pos, {name="tnt:tnt_burning"})
+		boom({x=pos.x, y=pos.y, z=pos.z}, 0)
+	end,
 	
 	mesecons = {
 		effector = {
@@ -138,6 +146,9 @@ minetest.register_node("tnt:tnt_burning", {
 	light_source = 5,
 	drop = "",
 	sounds = default.node_sound_wood_defaults(),
+	on_blast = function(pos, intensity)
+		boom({x=pos.x, y=pos.y, z=pos.z}, 0)
+	end,
 })
 
 minetest.register_node("tnt:boom", {
